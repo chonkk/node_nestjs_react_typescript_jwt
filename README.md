@@ -1,6 +1,8 @@
 # NOVA JWT Login
 
-React/Vite 프론트엔드와 Fastify/JWT 백엔드로 구성된 로그인 예제입니다.
+React/Vite 프론트엔드와 NestJS/JWT 백엔드로 구성된 로그인 예제입니다.
+
+백엔드는 NestJS의 Fastify 어댑터를 사용합니다.
 
 ## 요구 사항
 
@@ -42,7 +44,9 @@ npm run dev
 비밀번호: nova1234
 ```
 
-로그인에 성공하면 백엔드가 JWT access token을 발급하고, 프론트엔드는 `/api/me`를 호출해 인증된 사용자를 확인합니다.
+로그인에 성공하면 NestJS 백엔드가 JWT access token을 발급하고, 프론트엔드는 `/api/me`를 호출해 인증된 사용자를 확인합니다.
+
+NestJS 백엔드 코드는 `server/` 폴더에 있으며, `main.ts`가 애플리케이션을 시작하고 `auth.controller.ts`가 API 라우트를, `auth.service.ts`가 로그인/JWT 로직을 담당합니다.
 
 ## 빌드
 
