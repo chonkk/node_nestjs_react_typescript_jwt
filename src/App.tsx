@@ -1,13 +1,24 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import './App.css'
 
 const API_URL = 'http://localhost:4000/api'
+
+type User = {
+  name: string
+  email: string
+}
+
+type LoginResponse = {
+  message?: string
+  token?: string
+  user?: User
+}
 
 function MarkIcon() {
   return <svg className="mark-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3 27 9v8c0 6.4-4.4 10.5-11 12C9.4 27.5 5 23.4 5 17V9l11-6Z" /><path className="mark-check" d="m10.5 16.2 3.5 3.5 7.5-8" /></svg>
 }
 
-function FieldIcon({ type }) {
+function FieldIcon({ type }: { type: 'email' | 'password' }) {
   return type === 'email'
     ? <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m4 7 8 6 8-6" /></svg>
     : <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
@@ -18,39 +29,61 @@ function App() {
   const [password, setPassword] = useState('nova1234')
   const [remember, setRemember] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState<User | null>(null)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
     const token = localStorage.getItem('nova_token') || sessionStorage.getItem('nova_token')
     if (!token) return
+
     fetch(`${API_URL}/me`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((response) => response.ok ? response.json() : Promise.reject())
-      .then((data) => setUser(data.user))
-      .catch(() => { localStorage.removeItem('nova_token'); sessionStorage.removeItem('nova_token') })
+      .then((response) => (response.ok ? response.json() : Promise.reject(new Error('Unauthorized'))))
+      .then((data: { user: User }) => setUser(data.user))
+      .catch(() => {
+        localStorage.removeItem('nova_token')
+        sessionStorage.removeItem('nova_token')
+      })
   }, [])
 
-  async function handleSubmit(event) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError('')
     setIsLoading(true)
+
     try {
       const response = await fetch(`${API_URL}/auth/login`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }),
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
       })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.message)
-      if (remember) localStorage.setItem('nova_token', data.token)
-      else sessionStorage.setItem('nova_token', data.token)
-      setUser(data.user)
+
+      const data = (await response.json()) as LoginResponse
+
+      if (!response.ok) {
+        throw new Error(data.message || '로그인에 실패했습니다.')
+      }
+
+      if (remember && data.token) {
+        localStorage.setItem('nova_token', data.token)
+      } else if (data.token) {
+        sessionStorage.setItem('nova_token', data.token)
+      }
+
+      if (data.user) {
+        setUser(data.user)
+      }
     } catch (requestError) {
-      setError(requestError.message || '로그인에 실패했습니다.')
-    } finally { setIsLoading(false) }
+      setError(requestError instanceof Error ? requestError.message : '로그인에 실패했습니다.')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   function handleLogout() {
-    localStorage.removeItem('nova_token'); sessionStorage.removeItem('nova_token'); setUser(null)
+    localStorage.removeItem('nova_token')
+    sessionStorage.removeItem('nova_token')
+    setUser(null)
   }
 
   if (user) return <main className="authenticated-shell">
